@@ -36,6 +36,8 @@ kaiHEN-$version.zip layout:
 
 Built with \`docker build --build-arg RELEASE=1 --output out .\` at this tag, with ounce-devkit $devkit.
 
+\`libkaihen-$version-1-any.pkg.tar.zst\`: libkaihen (\`kaihen.h\`, \`-lkaihen\`, \`-lkaihen_plugin\`) for devkitPro's pacman, built with \`packaging/Dockerfile\`. It is also in the [ounce] repository at https://pkg.ouncebrew.org.
+
 ## Source
 
 - kaiHEN: this repository at this tag.

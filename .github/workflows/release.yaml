@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: ISC
 #
-# Pushing a version tag builds kaiHEN-VERSION.zip and publishes it as that
-# tag's GitHub release. The tag is the version (20261118, or 20261118.1 for
+# Pushing a version tag builds kaiHEN-VERSION.zip and libkaihen's pacman
+# package and publishes them as that tag's GitHub release. The tag is the version (20261118, or 20261118.1 for
 # another release on the same day); the annotated tag's message begins the
 # release notes, and release/notes.sh adds the layout, sources and SHA-256:
 #   git tag -a 20261118 && git push origin 20261118
-# Running the workflow by hand builds the zip without publishing it.
+# Running the workflow by hand builds them without publishing them.
 name: Release
 
 on:
@@ -39,12 +39,26 @@ jobs:
           docker build --build-arg RELEASE=1 --build-arg DEVKIT_IMAGE=ounce-devkit \
               --output type=local,dest=out .
 
-      - name: Keep the test zip
+      # A test build by hand is versioned with the date.
+      - name: Build libkaihen's package
+        run: |
+          version="$GITHUB_REF_NAME"
+          if [ "$GITHUB_EVENT_NAME" != push ]; then
+              version=$(date +%Y%m%d)
+          fi
+          docker build -f packaging/Dockerfile --build-arg VERSION="$version" \
+              --build-arg SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)" \
+              --output type=local,dest=package .
+          (cd package && for package in *.pkg.tar.zst; do sha256sum "$package" > "$package.sha256"; done)
+
+      - name: Keep the test build
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: kaiHEN
-          path: out/kaiHEN.zip
+          path: |
+            out/kaiHEN.zip
+            package/
 
       # actions/checkout does not keep an annotated tag's message.
       - name: Publish
@@ -57,4 +71,5 @@ jobs:
           zip="kaiHEN-$version.zip"
           cp out/kaiHEN.zip "$zip"
           sh release/notes.sh "$version" "$zip" "$DEVKIT_VERSION" > notes.md
-          gh release create "$version" --title "kaiHEN $version" --notes-file notes.md "$zip"
+          gh release create "$version" --title "kaiHEN $version" --notes-file notes.md \
+              "$zip" package/libkaihen-*.pkg.tar.zst package/libkaihen-*.pkg.tar.zst.sha256
