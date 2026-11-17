@@ -16,10 +16,6 @@ on:
 permissions:
   contents: write
 
-env:
-  # The devkit release that the zip is built with.
-  DEVKIT_VERSION: '20261117'
-
 jobs:
   release:
     name: Build and publish kaiHEN.zip
@@ -29,10 +25,13 @@ jobs:
         with:
           persist-credentials: false
 
+      # The devkit's packages, as the [ounce] repository serves them now. The
+      # release notes name their versions.
       - name: Build the devkit image
         run: |
-          docker build -t ounce-devkit --build-arg DEVKIT_VERSION="$DEVKIT_VERSION" \
-              https://github.com/ouncebrew/ounce-devkit.git
+          docker build -t ounce-devkit https://github.com/ouncebrew/ounce-devkit.git
+          docker run --rm ounce-devkit dkp-pacman -Q libounce ouncevk libkaihen > devkit-packages.txt
+          cat devkit-packages.txt
 
       - name: Build kaiHEN.zip
         run: |
@@ -70,6 +69,6 @@ jobs:
           git fetch --depth=1 --force origin "+refs/tags/$version:refs/tags/$version"
           zip="kaiHEN-$version.zip"
           cp out/kaiHEN.zip "$zip"
-          sh release/notes.sh "$version" "$zip" "$DEVKIT_VERSION" > notes.md
+          sh release/notes.sh "$version" "$zip" devkit-packages.txt > notes.md
           gh release create "$version" --title "kaiHEN $version" --notes-file notes.md \
               "$zip" package/libkaihen-*.pkg.tar.zst package/libkaihen-*.pkg.tar.zst.sha256

@@ -3,13 +3,20 @@
 #
 # Prints the notes of a kaiHEN release: the annotated tag's message, then the
 # zip's layout, the sources that the Dockerfile pins and the zip's SHA-256.
-#   sh release/notes.sh VERSION ZIP DEVKIT_VERSION
+# PACKAGES is `dkp-pacman -Q libounce ouncevk libkaihen` in the build image.
+#   sh release/notes.sh VERSION ZIP PACKAGES
 set -eu
 
-version="${1:?usage: notes.sh VERSION ZIP DEVKIT_VERSION}"
-zip="${2:?usage: notes.sh VERSION ZIP DEVKIT_VERSION}"
-devkit="${3:?usage: notes.sh VERSION ZIP DEVKIT_VERSION}"
+version="${1:?usage: notes.sh VERSION ZIP PACKAGES}"
+zip="${2:?usage: notes.sh VERSION ZIP PACKAGES}"
+packages="${3:?usage: notes.sh VERSION ZIP PACKAGES}"
 top=$(cd "$(dirname "$0")/.." && pwd)
+
+# The installed version of a devkit package.
+installed() {
+    sed -n "s/^$1 //p" "$packages"
+}
+devkit="libounce $(installed libounce), OunceVK $(installed ouncevk) and libkaihen $(installed libkaihen)"
 
 # The value of an ARG in the Dockerfile.
 pin() {
@@ -34,7 +41,7 @@ kaiHEN-$version.zip layout:
 - \`programs/ounceshell.nro\`: OunceShell
 - \`licenses/\`: the licenses of everything above
 
-Built with \`docker build --build-arg RELEASE=1 --output out .\` at this tag, with ounce-devkit $devkit.
+Built with \`docker build --build-arg RELEASE=1 --output out .\` at this tag, in ounce-devkit's image with $devkit from the [ounce] repository.
 
 \`libkaihen-$version-1-any.pkg.tar.zst\`: libkaihen (\`kaihen.h\`, \`-lkaihen\`, \`-lkaihen_plugin\`) for devkitPro's pacman, built with \`packaging/Dockerfile\`. It is also in the [ounce] repository at https://pkg.ouncebrew.org.
 
@@ -44,7 +51,7 @@ Built with \`docker build --build-arg RELEASE=1 --output out .\` at this tag, wi
 - nx-hbloader: [ouncebrew/ounce-hbloader](https://github.com/ouncebrew/ounce-hbloader) at \`$(pin HBLOADER_COMMIT)\`.
 - nx-hbmenu: [ouncebrew/ounce-hbmenu](https://github.com/ouncebrew/ounce-hbmenu) at \`$(pin HBMENU_COMMIT)\`.
 - OunceShell (GPL-3.0-or-later): [kurumuz/ounceshell](https://github.com/kurumuz/ounceshell) at \`$(pin OUNCESHELL_COMMIT)\`, built with its \`switch2/Makefile\`. Its FTP server is [mtheall/ftpd](https://github.com/mtheall/ftpd) v2.3.1 (public domain), modified.
-- libounce, OunceVK and libkaihen: [ouncebrew/ounce-devkit](https://github.com/ouncebrew/ounce-devkit) $devkit, which pins their commits.
+- $devkit: the packages of [ouncebrew/libounce](https://github.com/ouncebrew/libounce), [ouncebrew/ouncevk](https://github.com/ouncebrew/ouncevk) and this repository's releases of those versions.
 - The devkitPro portlibs linked into hbmenu and OunceShell, from devkitPro's packages: libconfig 1.7.2, freetype 2.13.3, harfbuzz 10.0.1, libjpeg-turbo 2.1.2, libpng 1.6.48, bzip2 1.0.8, zlib 1.3.1, physfs 3.2.0, SDL2 2.28.5, SDL2_ttf 2.22.0, SDL2_image 2.0.4, libwebp 1.0.2, libarchive 3.7.2, expat 2.2.5, lz4 1.9.3, zstd 1.5.7, liblzma 5.8.2, libvorbis 1.3.7, libogg 1.3.4, Oniguruma 6.9.2.
 
 SHA-256: $(sha256sum "$zip" | cut -d' ' -f1)
