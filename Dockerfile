@@ -12,7 +12,7 @@ ARG DEVKIT_IMAGE=ounce-devkit:latest
 FROM ${DEVKIT_IMAGE} AS build
 ARG RELEASE=0
 ARG HBLOADER_URL=https://github.com/ouncebrew/ounce-hbloader.git
-ARG HBLOADER_COMMIT=95f0e5dfbbcd28d678d30c99eeb5344feb0f6e71
+ARG HBLOADER_COMMIT=2d38bcbe944b317e92acdc32ccf7b53b65093bf6
 ARG HBMENU_URL=https://github.com/ouncebrew/ounce-hbmenu.git
 ARG HBMENU_COMMIT=43845d247487dedaa902f53f7d24ed61a116e982
 ARG OUNCESHELL_URL=https://github.com/kurumuz/ounceshell.git
