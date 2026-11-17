@@ -85,7 +85,7 @@ static Result _launchOpenProcessReader(LaunchState* args) {
 }
 
 static void _launchExchangeMount(LaunchState* args, BootstrapGate& gate,
-                                 BootstrapMount& mount, ounce::CompilerTlsScope& tls) {
+                                 BootstrapMount& mount) {
     for (u32 step = 0; step < 30000 && !args->exchanged; step++) {
         bool ready = false;
         args->result = gate.pending(ready);
@@ -93,12 +93,10 @@ static void _launchExchangeMount(LaunchState* args, BootstrapGate& gate,
             break;
         }
         if (!ready) {
-            tls.suspend();
-            u64 finished = args->input.pthread_trywait(args->thread, 0, 0);
-            tls.resume();
-            // PM can return the new PID before Loader opens its CodeFS.
-            // Keep watching the parked gate after a successful PM reply.
-            if (finished == 1 && R_FAILED(args->pm.result)) {
+            // Poll completion without calling into the worker's thread
+            // runtime while this loop serves Loader's pending mount.
+            if (__atomic_load_n(&args->pm.completed, __ATOMIC_ACQUIRE) &&
+                R_FAILED(args->pm.result)) {
                 break;
             }
             svcSleepThread(1000000);
@@ -162,7 +160,7 @@ static void _launchRequest(LaunchState* args, BootstrapGate& gate,
         return;
     }
 
-    _launchExchangeMount(args, gate, mount, tls);
+    _launchExchangeMount(args, gate, mount);
 }
 
 static void _launchRestoreAndJoin(LaunchState* args, BootstrapGate& gate,
@@ -422,7 +420,7 @@ static void _launchOne(LaunchState* args, ounce::CompilerTlsScope& tls,
     if (args->report) {
         args->report->process_id = 0;
     }
-    args->pm.completed = 0;
+    __atomic_store_n(&args->pm.completed, 0u, __ATOMIC_RELAXED);
     args->thread = 0;
     args->mounts = 0;
     args->exchanged = false;
@@ -471,7 +469,8 @@ static void _launchOne(LaunchState* args, ounce::CompilerTlsScope& tls,
         args->result = args->pm.result;
         return;
     }
-    if (!args->exchanged || !args->pm.completed) {
+    if (!args->exchanged ||
+        !__atomic_load_n(&args->pm.completed, __ATOMIC_ACQUIRE)) {
         package.close();
         args->mark(failed_stage);
         args->result = MAKERESULT(Module_Libnx, LibnxError_BadInput);
